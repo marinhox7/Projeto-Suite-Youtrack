@@ -120,7 +120,7 @@ const AppComponent: React.FunctionComponent = () => {
           fontSize: '14px',
           fontWeight: '500'
         }}>
-          Atenção: {error}
+          Atencao: {error}
         </div>
       )}
       {!error && stats && (
