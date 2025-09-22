@@ -1,0 +1,25 @@
+{
+  "name": "youtrack-suite-app",
+  "title": "YouTrack Suite Dashboard",
+  "description": "Dashboard de estatísticas e relatórios para YouTrack",
+  "$schema": "https://json.schemastore.org/youtrack-app.json",
+  "vendor": {
+    "name": "iMarinho",
+    "url": "https://braiphub.youtrack.cloud"
+  },
+  "icon": "icon.svg",
+  "widgets": [
+    {
+      "key": "imarinho-performance-tracking",
+      "name": "YouTrack Suite - Dashboard",
+      "indexPath": "imarinho-performance-tracking/index.html",
+      "extensionPoint": "DASHBOARD_WIDGET",
+      "iconPath": "imarinho-performance-tracking/widget-icon.svg",
+      "description": "Dashboard com estatísticas de issues, taxa de conclusão e relatórios",
+      "permissions": [
+        "READ_ISSUE",
+        "READ_PROJECT"
+      ]
+    }
+  ]
+}
