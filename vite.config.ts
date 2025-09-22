@@ -32,6 +32,15 @@ export default defineConfig({
         {
           src: 'widgets/**/*.{svg,png,jpg,json}',
           dest: '.'
+        },
+        // Backend handlers and shared utilities
+        {
+          src: 'backend/**/*',
+          dest: 'src'
+        },
+        {
+          src: 'utils/**/*',
+          dest: 'src'
         }
       ],
       structured: true

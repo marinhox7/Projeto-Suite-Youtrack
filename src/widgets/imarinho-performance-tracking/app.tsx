@@ -13,6 +13,26 @@ interface IssueStats {
   openIssues: number;
   inProgressIssues: number;
   error?: string;
+  projects?: string[];
+}
+
+const API_ERROR_MESSAGE = 'Dados de demonstracao (falha na API do YouTrack)';
+const BACKEND_ERROR_MESSAGE = 'Dados de demonstracao (backend indisponivel)';
+
+function generateMockStats(): IssueStats {
+  const baseTotal = 120 + Math.floor(Math.random() * 60);
+  const resolvedCount = Math.floor(baseTotal * (0.55 + Math.random() * 0.25));
+  const openCount = Math.floor((baseTotal - resolvedCount) * (0.4 + Math.random() * 0.3));
+  const progressCount = Math.max(0, (baseTotal - resolvedCount) - openCount);
+
+  return {
+    totalIssues: baseTotal,
+    resolvedIssues: resolvedCount,
+    activeIssues: baseTotal - resolvedCount,
+    openIssues: openCount,
+    inProgressIssues: progressCount,
+    completionRate: Math.round((resolvedCount / baseTotal) * 1000) / 10
+  };
 }
 
 const AppComponent: React.FunctionComponent = () => {
@@ -26,55 +46,38 @@ const AppComponent: React.FunctionComponent = () => {
     setError(null);
 
     try {
-      console.log('Buscando dados reais do YouTrack...');
-      // Agora que sabemos que o backend funciona, vamos buscar dados reais
+      console.log('Fetching real data from YouTrack...');
       const result = await host.fetchApp('backend/stats', {scope: true}) as IssueStats;
 
-      if (result.error) {
-        console.warn('Backend retornou erro:', result.error);
-
-        // Fallback para dados mock se houver erro na API
-        const baseTotal = 120 + Math.floor(Math.random() * 60);
-        const resolvedCount = Math.floor(baseTotal * (0.55 + Math.random() * 0.25));
-        const openCount = Math.floor((baseTotal - resolvedCount) * (0.4 + Math.random() * 0.3));
-        const progressCount = Math.max(0, (baseTotal - resolvedCount) - openCount);
-
-        const mockStats: IssueStats = {
-          totalIssues: baseTotal,
-          resolvedIssues: resolvedCount,
-          activeIssues: baseTotal - resolvedCount,
-          openIssues: openCount,
-          inProgressIssues: progressCount,
-          completionRate: Math.round((resolvedCount / baseTotal) * 100 * 10) / 10
-        };
-
-        setStats(mockStats);
-        setError('Dados de demonstração (Erro na API do YouTrack)');
-      } else {
-        console.log('Dados reais obtidos com sucesso:', result);
-        setStats(result);
-        setError(null); // Sem erro = dados reais
+      if (!result) {
+        throw new Error('Backend returned empty payload');
       }
-    } catch (err) {
-      console.warn('Erro ao conectar com backend, usando dados mock:', err);
 
-      // Fallback para dados mock se fetchApp falhar
-      const baseTotal = 120 + Math.floor(Math.random() * 60);
-      const resolvedCount = Math.floor(baseTotal * (0.55 + Math.random() * 0.25));
-      const openCount = Math.floor((baseTotal - resolvedCount) * (0.4 + Math.random() * 0.3));
-      const progressCount = Math.max(0, (baseTotal - resolvedCount) - openCount);
+      if (result.error) {
+        console.warn('Backend reported error:', result.error);
+        setStats(generateMockStats());
+        setError(result.error || API_ERROR_MESSAGE);
+        return;
+      }
 
-      const mockStats: IssueStats = {
-        totalIssues: baseTotal,
-        resolvedIssues: resolvedCount,
-        activeIssues: baseTotal - resolvedCount,
-        openIssues: openCount,
-        inProgressIssues: progressCount,
-        completionRate: Math.round((resolvedCount / baseTotal) * 100 * 10) / 10
+      const normalized: IssueStats = {
+        totalIssues: result.totalIssues ?? 0,
+        resolvedIssues: result.resolvedIssues ?? 0,
+        activeIssues: result.activeIssues ?? 0,
+        openIssues: result.openIssues ?? 0,
+        inProgressIssues: result.inProgressIssues ?? 0,
+        completionRate: typeof result.completionRate === 'number' ? result.completionRate : 0,
+        projects: result.projects
       };
 
-      setStats(mockStats);
-      setError('Dados de demonstração (Backend não disponível)');
+      console.log('YouTrack stats loaded:', normalized);
+      setStats(normalized);
+      setError(null);
+    } catch (err) {
+      console.warn('Falling back to mock data:', err);
+      setStats(generateMockStats());
+      const message = err instanceof Error ? err.message : BACKEND_ERROR_MESSAGE;
+      setError(message || BACKEND_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,7 @@ const AppComponent: React.FunctionComponent = () => {
     return (
       <div className="widget">
         <LoaderInline />
-        <span>Carregando estatísticas...</span>
+        <span>Carregando estatisticas...</span>
       </div>
     );
   }
@@ -104,7 +107,7 @@ const AppComponent: React.FunctionComponent = () => {
 
   return (
     <div className="widget">
-      <h2>Dashboard YouTrack - Estatísticas</h2>
+      <h2>Dashboard YouTrack - Estatisticas</h2>
       {error && stats && (
         <div className="info-banner" style={{
           background: '#fff3cd',
@@ -117,7 +120,7 @@ const AppComponent: React.FunctionComponent = () => {
           fontSize: '14px',
           fontWeight: '500'
         }}>
-          ⚠️ {error}
+          Aten��o: {error}
         </div>
       )}
       {!error && stats && (
@@ -132,7 +135,12 @@ const AppComponent: React.FunctionComponent = () => {
           fontSize: '14px',
           fontWeight: '500'
         }}>
-          ✅ Dados reais do YouTrack
+          Tudo certo. Dados reais do YouTrack carregados.
+          {stats.projects && stats.projects.length > 0 && (
+            <div style={{marginTop: '8px', fontSize: '12px'}}>
+              Projetos processados: {stats.projects.join(', ')}
+            </div>
+          )}
         </div>
       )}
       {stats && (
@@ -158,7 +166,7 @@ const AppComponent: React.FunctionComponent = () => {
             <div className="stat-value progress">{stats.inProgressIssues}</div>
           </div>
           <div className="stat-card">
-            <h3>Taxa de Conclusão</h3>
+            <h3>Taxa de Conclusao</h3>
             <div className="stat-value completion">{stats.completionRate.toFixed(1)}%</div>
           </div>
         </div>
@@ -168,15 +176,15 @@ const AppComponent: React.FunctionComponent = () => {
         <Button onClick={async () => {
           setTestResult(null);
           try {
-            console.log('Testando conexão com backend...');
+            console.log('Checking backend connectivity...');
             const result = await host.fetchApp('backend/debug', {query: {test: 'connection'}, scope: true});
-            console.log('Resultado do teste:', result);
-            setTestResult('✅ Backend funcionando: ' + JSON.stringify(result));
+            console.log('Debug endpoint result:', result);
+            setTestResult('Sucesso: ' + JSON.stringify(result));
             setTimeout(() => setTestResult(null), 5000);
           } catch (err) {
-            console.error('Erro na conexão:', err);
+            console.error('Backend test failed:', err);
             const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
-            setTestResult('❌ Erro: ' + errorMessage);
+            setTestResult('Falha: ' + errorMessage);
             setTimeout(() => setTestResult(null), 5000);
           }
         }}>Testar Backend</Button>
@@ -188,9 +196,9 @@ const AppComponent: React.FunctionComponent = () => {
           borderRadius: '6px',
           fontSize: '14px',
           textAlign: 'center',
-          background: testResult.startsWith('✅') ? '#d4edda' : '#f8d7da',
-          border: testResult.startsWith('✅') ? '1px solid #c3e6cb' : '1px solid #f5c6cb',
-          color: testResult.startsWith('✅') ? '#155724' : '#721c24'
+          background: testResult.startsWith('Sucesso') ? '#d4edda' : '#f8d7da',
+          border: testResult.startsWith('Sucesso') ? '1px solid #c3e6cb' : '1px solid #f5c6cb',
+          color: testResult.startsWith('Sucesso') ? '#155724' : '#721c24'
         }}>
           {testResult}
         </div>
